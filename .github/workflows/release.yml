@@ -1,0 +1,30 @@
+name: Release
+
+# 推送 v* 标签时自动打包独立 exe 并挂到对应 GitHub Release
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-exe:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build standalone exe
+        run:
+          pyinstaller --onefile --name IntranetFileTransfer --console --clean -y
+          src/file_transfer_server.py
+
+      - name: Attach exe to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/IntranetFileTransfer.exe

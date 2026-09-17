@@ -1,22 +1,32 @@
+<div align="center">
+
 # 内网文件互传服务器
 
-局域网内 iPad / 手机 / 电脑之间互传大文件。
+**Intranet File Transfer**
 
-单文件即可运行。
+局域网内 iPad / 手机 / 电脑之间互传大文件——单文件即可运行，浏览器打开同一个网址就能互相传。
 
-浏览器打开同一个网址就能互相传。
+[![Version](https://img.shields.io/badge/version-3.5.1-4f46e5)](https://github.com/Wloeve/Intranet-File-Transfer/releases/latest)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Windows%2010%20%2F%2011%20%C2%B7%20macOS%20%C2%B7%20Linux-lightgrey)](README.md#-快速开始)
+[![Python](https://img.shields.io/badge/Python-3.7%2B-3776ab?logo=python&logoColor=white)](https://www.python.org)
+[![Dependencies](https://img.shields.io/badge/%E8%BF%90%E8%A1%8C%E6%97%B6%E4%BE%9D%E8%B5%96-0-brightgreen)](src/file_transfer_server.py)
 
-## 功能特性
+</div>
+
+---
+
+## ✨ 功能特性
 
 - **双向传输**：手机/平板 → 电脑上传；电脑上传后，其他设备打开同一网址即可下载
 - **超大文件**：单个文件支持 20G 及以上
 - **断点续传**：网络中断、页面刷新、服务重启后，重选同一文件自动从断点继续
 - **多连接并行**：1~4 条 WebSocket 长连接同时传输，绕开单条 TCP 流的窗口限制
 - **实时速率**：显示瞬时速率、峰值速率、平均速率与预计剩余时间
-- **下载续传**：大文件下载支持 HTTP Range 断点续传
+- **下载续传**：大文件下载支持 HTTP Range 断点续传，中断后从断点继续
 - **深色模式**：跟随系统自动切换明暗主题
 
-## 快速开始
+## 🚀 快速开始
 
 > **免安装版下载**：到 [Releases](https://github.com/Wloeve/Intranet-File-Transfer/releases/latest)
 > 下载 `IntranetFileTransfer.exe`，复制到任意 Windows 10/11 电脑双击即可运行，无需安装 Python。
@@ -31,7 +41,7 @@
 
 首次运行如弹出防火墙提示，请勾选「专用网络」并允许访问。
 
-### Windows（免安装 Python，推荐发给别人用）
+### 从源码打包独立 exe
 
 在没有装 Python 的电脑上运行，可以先打一个独立 exe：
 
@@ -42,6 +52,9 @@
 exe 旁会自动生成 `接收的文件/`、`.uploads_tmp/`、`server.log`，
 把 exe 放在哪个文件夹，文件就落在哪个文件夹。
 
+推送 `v*` 标签时，GitHub Actions 会自动完成打包并挂到对应 Release（见
+[`.github/workflows/release.yml`](.github/workflows/release.yml)）。
+
 ### macOS / Linux
 
 在工程根目录执行：
@@ -50,7 +63,7 @@ exe 旁会自动生成 `接收的文件/`、`.uploads_tmp/`、`server.log`，
 python3 src/file_transfer_server.py
 ```
 
-## 使用方法
+## 📖 使用方法
 
 ### 上传
 
@@ -71,12 +84,26 @@ python3 src/file_transfer_server.py
 
 两个参数改动即时生效，并会记住你的选择（存于浏览器 localStorage）。
 
-## 目录结构
+## 🧠 设计要点
+
+- **零依赖**：只用 Python 标准库，一个 `.py` 文件跑起来，不需要 `pip install` 任何东西
+- **双通道上传**：WebSocket 长连接为主通道（整文件一条连接，消除每片一次 TCP 握手与慢启动），
+  HTTP 分片接口保留为兜底
+- **并行传输**：1~4 条 WebSocket 同时发分片，绕开单条 TCP 流的窗口限制；逐条看门狗 +
+  故障隔离 + 自动降级到 1 条，防止越传越卡
+- **全链路续传**：分片位图落盘（`.uploads_tmp/`），断网、刷新、服务重启都能续；
+  下载侧用字节级发送重试（容忍约 8 分钟 Wi-Fi 停顿）+ `ETag` / `If-Range` 校验，
+  续传不会拼错内容
+- **死连接自愈**：读写超时回收静默死连接（Wi-Fi 抖动 / NAT 断开），配合停滞判定自动重发
+
+## 📁 目录结构
 
 ```
 start_server.bat              入口，双击启动（自动找本机 Python）
 build_exe.bat                 可选：打包免安装的独立 exe
 src/file_transfer_server.py   全部源码（单文件，含内嵌网页）
+CHANGELOG.md                  版本变更记录
+.github/workflows/            CI：推送 v* 标签自动打包 Release
 接收的文件/                   上传的文件落在这里
 .uploads_tmp/                 未完成的分片，断点续传用；删掉只是无法续传
 server.log                    运行日志
@@ -85,7 +112,7 @@ server.log                    运行日志
 
 `接收的文件/`、`.uploads_tmp/`、`server.log` 均为运行时产生的数据，不入版本库。
 
-## 配置项
+## ⚙️ 配置项
 
 打开 `src/file_transfer_server.py` 顶部的「配置区」按需修改：
 
@@ -97,7 +124,7 @@ server.log                    运行日志
 | `TMP_KEEP_DAYS`     | `7`    | 未完成分片的保留天数（期间可续传）     |
 | `CHUNK_SIZE`        | `4 MB` | 默认分片大小（iPad 会自动改用 2MB）    |
 
-## 常见问题
+## ❓ 常见问题
 
 ### 启动时提示「无法在程序目录写入文件」
 
@@ -140,6 +167,24 @@ server.log                    运行日志
 
 修改 `src/file_transfer_server.py` 顶部的 `PORT` 后重启。
 
-## 许可证
+## 📜 版本历史
 
-[MIT](LICENSE)
+详见 [CHANGELOG.md](CHANGELOG.md)。
+
+## 📄 许可证
+
+本项目基于 [MIT License](LICENSE) 开源。
+
+---
+
+<div align="center">
+
+**开发者**
+
+### **Wloeve**
+
+[GitHub @Wloeve](https://github.com/Wloeve) · [Releases 下载](https://github.com/Wloeve/Intranet-File-Transfer/releases/latest)
+
+如果这个项目对你有帮助，欢迎点一个 Star ⭐
+
+</div>
