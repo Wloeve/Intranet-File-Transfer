@@ -18,6 +18,9 @@
 
 ## 快速开始
 
+> **免安装版下载**：到 [Releases](https://github.com/Wloeve/Intranet-File-Transfer/releases/latest)
+> 下载 `IntranetFileTransfer.exe`，复制到任意 Windows 10/11 电脑双击即可运行，无需安装 Python。
+
 ### Windows
 
 双击工程根目录的 **`start_server.bat`**（即「启动服务器」）。脚本会自动在本机寻找可用的 Python 3
