@@ -16,6 +16,11 @@ server.log
 # ---------- 本机会话记忆 ----------
 .workbuddy/
 
+# ---------- 打包产物（不入库，用 build_exe.bat 重新生成）----------
+build/
+dist/
+IntranetFileTransfer.spec
+
 # ---------- 编辑器 / 系统 ----------
 .vscode/
 .idea/

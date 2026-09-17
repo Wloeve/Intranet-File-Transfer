@@ -31,7 +31,7 @@ except Exception:
     pass
 
 # ==================== 配置区（按需修改） ====================
-VERSION = "3.4.3"                    # 程序版本(页面会校验, 不一致时自动刷新)
+VERSION = "3.5.1"                    # 程序版本(页面会校验, 不一致时自动刷新)
 PORT = 8899                          # 服务端口
 AUTO_OPEN_BROWSER = True             # 启动时在本机自动打开浏览器
 SOCKET_TIMEOUT = 120                 # 单次网络读写超时(秒)
@@ -49,10 +49,15 @@ WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"   # WebSocket 握手固定 GUID
 WS_TIMEOUT = 600                     # WebSocket 连接空闲超时(秒)
 WS_MAX_FRAME = 64 * 1024 * 1024      # 单帧上限, 防止异常客户端打爆内存
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-# 源码放在 src/ 子目录里时，工程根目录是它的上一级
-if os.path.basename(BASE_DIR).lower() == "src":
-    BASE_DIR = os.path.dirname(BASE_DIR)
+# PyInstaller 打包成 exe 后，__file__ 指向临时解包目录，
+# 此时以 exe 所在目录为根目录（接收的文件/、日志都生成在 exe 旁边）
+if getattr(sys, "frozen", False):
+    BASE_DIR = os.path.dirname(os.path.abspath(sys.executable))
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    # 源码放在 src/ 子目录里时，工程根目录是它的上一级
+    if os.path.basename(BASE_DIR).lower() == "src":
+        BASE_DIR = os.path.dirname(BASE_DIR)
 
 SAVE_DIR = os.path.join(BASE_DIR, "接收的文件")       # 文件最终保存位置
 TMP_DIR = os.path.join(BASE_DIR, ".uploads_tmp")      # 分片临时目录(隐藏)
@@ -1811,10 +1816,22 @@ class FileHandler(BaseHTTPRequestHandler):
 
         name = os.path.basename(path)
         size = os.path.getsize(path)
+        mtime = int(os.path.getmtime(path))
         start, end = 0, size - 1
         status = 200
 
+        # ETag / Last-Modified 供 Safari 断点续传时做 If-Range 校验：
+        # 客户端带着 If-Range 来续传时，若文件已经变了必须回整文件(200)，
+        # 否则新旧内容会被拼接，得到"下载完成但文件损坏"的结果
+        etag = '"%x-%x"' % (mtime, size)
+        last_mod = self.date_time_string(mtime)
+
         rng = self.headers.get("Range")
+        if rng and rng.startswith("bytes="):
+            ifr = (self.headers.get("If-Range") or "").strip()
+            if ifr and ifr != etag and ifr != last_mod:
+                rng = None          # 文件已变化，忽略断点，从头下载
+
         if rng and rng.startswith("bytes="):
             spec = rng[6:].split(",")[0].strip()
             try:
@@ -1840,26 +1857,65 @@ class FileHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/octet-stream")
         self.send_header("Content-Length", str(length))
         self.send_header("Accept-Ranges", "bytes")
+        self.send_header("ETag", etag)
+        self.send_header("Last-Modified", last_mod)
         self.send_header("Content-Disposition",
                          "attachment; filename*=UTF-8''" + quote(name))
         if status == 206:
             self.send_header("Content-Range", "bytes %d-%d/%d" % (start, end, size))
         self.end_headers()
 
+        # 发送循环不用 wfile.write(=sendall)：sendall 超时后无法知道实际发出多少字节，
+        # 只能杀连接。改用 socket.send 裸调用，手动累计已发字节，
+        # Wi-Fi 瞬断 / iPad 锁屏暂停时在原位置重试，而不是直接断开。
+        sent_total = 0
+        interrupted = False
         try:
             with open(path, "rb") as f:
                 f.seek(start)
                 remaining = length
                 buf = bytearray(READ_BLOCK)
                 view = memoryview(buf)
+                sock = self.connection
                 while remaining > 0:
                     n = f.readinto(view[:min(READ_BLOCK, remaining)])
                     if not n:
+                        interrupted = True          # 文件比 Content-Length 短(被外部改动)
                         break
-                    self.wfile.write(view[:n])
+                    pos = 0
+                    stalls = 0                       # 连续卡死次数(每次最多等 SOCKET_TIMEOUT 秒)
+                    while pos < n:
+                        try:
+                            k = sock.send(view[pos:n])
+                        except (socket.timeout, TimeoutError):
+                            stalls += 1
+                            if stalls > 3:
+                                # 连续 4 次(约 8 分钟)毫无进展，放弃这条连接，
+                                # Safari 可用 Range 从已收到的位置续传
+                                raise
+                            continue
+                        except (BrokenPipeError, ConnectionResetError):
+                            raise
+                        if k == 0:
+                            raise ConnectionError("peer closed send window")
+                        pos += k
+                        stalls = 0
                     remaining -= n
-        except (BrokenPipeError, ConnectionResetError):
+                    sent_total += n
+        except (BrokenPipeError, ConnectionResetError,
+                socket.timeout, TimeoutError, ConnectionError, OSError):
+            interrupted = True
             self.close_connection = True
+
+        if interrupted:
+            try:
+                stamp = datetime.datetime.now().strftime("%m-%d %H:%M:%S")
+                with LOG_LOCK:
+                    with open(LOG_FILE, "a", encoding="utf-8") as lf:
+                        lf.write("%s 下载中断 %s 已发 %d/%d 字节\n"
+                                 % (stamp, name, sent_total, length))
+            except Exception:
+                pass
 
     # ------------------------- POST -------------------------
     def do_POST(self):
@@ -2271,8 +2327,27 @@ def clean_stale_tmp():
 
 
 def main():
-    os.makedirs(SAVE_DIR, exist_ok=True)
-    os.makedirs(TMP_DIR, exist_ok=True)
+    # 目录创建 + 写入探针：程序被放进 Program Files 等无写入权限的位置时，
+    # 提前给出人话提示，而不是运行中莫名崩溃
+    try:
+        os.makedirs(SAVE_DIR, exist_ok=True)
+        os.makedirs(TMP_DIR, exist_ok=True)
+        probe = os.path.join(SAVE_DIR, ".write_test")
+        with open(probe, "w") as f:
+            f.write("ok")
+        os.remove(probe)
+    except OSError as e:
+        print("=" * 60)
+        print("  无法在程序目录写入文件：%s" % e)
+        print("  请把整个程序文件夹移动到有写入权限的普通目录，")
+        print("  例如桌面、文档、D 盘等，")
+        print("  不要放在 C:\\Program Files、C:\\Windows 等系统目录。")
+        print("=" * 60)
+        try:
+            input("  按回车键退出...")
+        except Exception:
+            pass
+        return
 
     # 端口占用检测：避免重复启动多个服务器，导致请求被随机分发到旧实例
     probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
