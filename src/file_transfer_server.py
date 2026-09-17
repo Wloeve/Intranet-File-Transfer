@@ -91,7 +91,7 @@ except Exception:
     pass
 
 # ==================== 配置区（按需修改） ====================
-VERSION = "3.4.1"                    # 程序版本(页面会校验, 不一致时自动刷新)
+VERSION = "3.4.2"                    # 程序版本(页面会校验, 不一致时自动刷新)
 PORT = 8899                          # 服务端口
 AUTO_OPEN_BROWSER = True             # 启动时在本机自动打开浏览器
 SOCKET_TIMEOUT = 120                 # 单次网络读写超时(秒)
@@ -226,8 +226,6 @@ input[type=file]{display:none}
         <option value="3">3</option>
         <option value="4">4</option>
       </select>
-    </div>
-    <div class="par">
       <label>停滞判定</label>
       <select id="wdog">
         <option value="2">2 秒</option>
@@ -236,7 +234,6 @@ input[type=file]{display:none}
         <option value="10">10 秒</option>
         <option value="25">25 秒</option>
       </select>
-      <span>多久没有分片完成就判定卡死并重发。越小越快，但误判重发也越多</span>
     </div>
     <div id="tasks"></div>
   </div>
@@ -254,7 +251,7 @@ input[type=file]{display:none}
 
   <p class="tip">
     上传的文件保存在电脑的「接收的文件」文件夹<br>
-    传输大文件时请让 iPad 保持亮屏并停留在本页面<br>
+    传输大文件时请保持亮屏并停留在本页面<br>
     <span style="opacity:.65">页面版本 <b id="ver"></b></span>
   </p>
 </div>
