@@ -91,7 +91,7 @@ except Exception:
     pass
 
 # ==================== 配置区（按需修改） ====================
-VERSION = "3.4.2"                    # 程序版本(页面会校验, 不一致时自动刷新)
+VERSION = "3.4.3"                    # 程序版本(页面会校验, 不一致时自动刷新)
 PORT = 8899                          # 服务端口
 AUTO_OPEN_BROWSER = True             # 启动时在本机自动打开浏览器
 SOCKET_TIMEOUT = 120                 # 单次网络读写超时(秒)
@@ -131,79 +131,158 @@ HTML = r"""<!DOCTYPE html>
 <title>内网文件互传</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --txt:#1f2937;--sub:#64748b;--mut:#94a3b8;--line:#e8ebf5;
+  --card:rgba(255,255,255,.86);--panel:#ffffff;
+  --acc:#4f46e5;--acc2:#7c3aed;--acc-mid:#818cf8;--acc-soft:#eef2ff;
+  --ok:#059669;--ok-soft:#e6f7f0;--bad:#dc2626;--bad-soft:#fdecec;
+  --sh1:0 1px 2px rgba(20,25,50,.05),0 6px 18px rgba(79,70,229,.07);
+  --sh2:0 24px 60px -14px rgba(79,70,229,.24);
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --txt:#e9ecf8;--sub:#9aa3c4;--mut:#6e7896;--line:#28304d;
+    --card:rgba(18,23,39,.84);--panel:#141a2e;
+    --acc:#8f97ff;--acc2:#b7a0ff;--acc-mid:#7d86f2;--acc-soft:#1b2242;
+    --ok:#34d399;--ok-soft:#102b23;--bad:#f87171;--bad-soft:#2b1515;
+    --sh1:0 1px 2px rgba(0,0,0,.35),0 8px 22px rgba(0,0,0,.26);
+    --sh2:0 26px 64px -14px rgba(0,0,0,.6);
+  }
+}
+.bg{position:fixed;inset:0;z-index:-1;
+  background:radial-gradient(900px 460px at 8% -6%,#dbe3ff,transparent 60%),
+             radial-gradient(780px 420px at 96% 2%,#fbe3f1,transparent 58%),
+             linear-gradient(168deg,#f5f7fe,#eef1fb)}
+@media (prefers-color-scheme:dark){
+  .bg{background:radial-gradient(900px 460px at 8% -6%,#1b2352,transparent 60%),
+      radial-gradient(780px 420px at 96% 2%,#2c1440,transparent 58%),
+      linear-gradient(168deg,#0c1122,#111735)}
+}
 body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
-     min-height:100vh;background:linear-gradient(165deg,#e0e7ff,#f5f3ff 50%,#fce7f3);
-     color:#1e293b;padding:max(18px,env(safe-area-inset-top)) 16px max(40px,env(safe-area-inset-bottom))}
-.wrap{max-width:600px;margin:0 auto}
-h1{font-size:21px;text-align:center;margin:6px 0 4px;font-weight:700}
+     min-height:100vh;color:var(--txt);
+     padding:max(18px,env(safe-area-inset-top)) 16px max(46px,env(safe-area-inset-bottom))}
+.wrap{max-width:620px;margin:0 auto}
+h1{font-size:22px;text-align:center;margin:2px 0 18px;font-weight:700;letter-spacing:.3px;
+   color:var(--acc);background:linear-gradient(92deg,var(--acc),var(--acc2));
+   -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 
-.card{background:rgba(255,255,255,.9);border-radius:24px;padding:20px 16px;
-      box-shadow:0 18px 50px rgba(79,70,229,.12)}
-.zone{border:2px dashed #c7d2fe;border-radius:18px;background:#f8faff;padding:30px 16px;
-      text-align:center;cursor:pointer;transition:all .18s}
-.zone:active{transform:scale(.98);background:#eef2ff}
-.zone.over{background:#eef2ff;border-color:#818cf8;transform:scale(1.01)}
-.zone .ico{width:58px;height:58px;margin:0 auto 12px;border-radius:50%;
-           background:linear-gradient(135deg,#6366f1,#a855f7);
+.card{background:var(--card);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);
+      border:1px solid var(--line);border-radius:22px;padding:18px 16px 16px;box-shadow:var(--sh2)}
+.zone{position:relative;border:1.6px dashed var(--acc-mid);border-radius:18px;
+      background:linear-gradient(180deg,var(--acc-soft),rgba(0,0,0,0));
+      padding:30px 16px 26px;text-align:center;cursor:pointer;
+      transition:transform .18s,background .18s,border-color .18s}
+.zone:hover{border-color:var(--acc);background:var(--acc-soft)}
+.zone:active{transform:scale(.985)}
+.zone.over{border-color:var(--acc);border-style:solid;background:var(--acc-soft);transform:scale(1.01)}
+.zone .ico{width:60px;height:60px;margin:0 auto 14px;border-radius:19px;
+           background:linear-gradient(135deg,var(--acc),var(--acc2));
            display:flex;align-items:center;justify-content:center;
-           box-shadow:0 10px 24px rgba(99,102,241,.35)}
-.zone .ico svg{width:27px;height:27px}
-.zone b{font-size:17px;display:block;margin-bottom:6px}
-.zone span{font-size:12.5px;color:#94a3b8;line-height:1.7;display:block}
-.par{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:14px;
-     font-size:12.5px;color:#64748b}
-.par select{border:1px solid #e2e8f0;background:#fff;border-radius:9px;padding:5px 8px;
-            font-size:12.5px;color:#1e293b}
-.task{background:#fff;border-radius:16px;padding:13px 14px;margin-top:10px;
-      box-shadow:0 2px 12px rgba(15,23,42,.06)}
-.trow{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
-.tname{font-size:14px;font-weight:600;word-break:break-all;flex:1;min-width:0}
-.tsize{color:#94a3b8;font-weight:400;font-size:12px;white-space:nowrap}
-.bar{height:8px;border-radius:4px;background:#e2e8f0;margin-top:11px;overflow:hidden}
-.bar i{display:block;height:100%;width:0;border-radius:4px;
-       background:linear-gradient(90deg,#6366f1,#a855f7);transition:width .2s linear}
+           box-shadow:0 12px 26px -8px rgba(99,102,241,.55)}
+.zone .ico svg{width:28px;height:28px;transition:transform .25s}
+.zone:hover .ico svg{transform:translateY(-3px)}
+.zone b{font-size:17px;display:block;margin-bottom:7px;font-weight:650}
+.zone span{font-size:12.5px;color:var(--mut);line-height:1.75;display:block}
+.par{display:flex;align-items:center;justify-content:center;gap:9px;margin-top:16px;
+     font-size:12.5px;color:var(--sub);flex-wrap:wrap}
+.par label{opacity:.9}
+.par select{-webkit-appearance:none;appearance:none;border:1px solid var(--line);
+            background-color:var(--panel);border-radius:10px;padding:6px 26px 6px 10px;
+            font-size:12.5px;font-weight:500;color:var(--txt);cursor:pointer;
+            background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='%2394a3b8'%20stroke-width='2.4'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='M6%209l6%206%206-6'/%3E%3C/svg%3E");
+            background-repeat:no-repeat;background-position:right 8px center;background-size:11px}
+.par select:focus{outline:none;border-color:var(--acc-mid)}
+.task{background:var(--panel);border:1px solid var(--line);border-radius:18px;
+      padding:14px 15px;margin-top:11px;box-shadow:var(--sh1);transition:border-color .2s}
+.task.ok{border-color:rgba(16,185,129,.45)}
+.task.bad{border-color:rgba(239,68,68,.45)}
+.trow{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.tmeta{flex:1;min-width:0}
+.tname{font-size:14px;font-weight:600;word-break:break-all;line-height:1.45}
+.tsize{color:var(--mut);font-size:11.5px;margin-top:3px;font-variant-numeric:tabular-nums}
+.pill{font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px;
+      white-space:nowrap;letter-spacing:.2px;flex:0 0 auto}
+.pill.up{background:var(--acc-soft);color:var(--acc)}
+.pill.okp{background:var(--ok-soft);color:var(--ok)}
+.pill.badp{background:var(--bad-soft);color:var(--bad)}
+.pill.cxp{background:var(--line);color:var(--sub)}
+.bar{position:relative;height:9px;border-radius:6px;background:var(--acc-soft);
+     margin-top:12px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;border-radius:6px;position:relative;overflow:hidden;
+       background:linear-gradient(90deg,var(--acc),var(--acc2));transition:width .2s linear}
+.bar i::after{content:"";position:absolute;top:0;bottom:0;left:0;right:0;
+      background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.38),rgba(255,255,255,0));
+      transform:translateX(-100%);animation:sheen 1.7s infinite}
+@keyframes sheen{to{transform:translateX(100%)}}
+@media (prefers-reduced-motion:reduce){.bar i::after{animation:none;display:none}}
 .task.ok .bar i{background:linear-gradient(90deg,#10b981,#34d399)}
+.task.ok .bar i::after{display:none}
 .task.bad .bar i{background:linear-gradient(90deg,#ef4444,#f87171)}
-.spd{display:flex;align-items:baseline;gap:6px;margin-top:9px}
-.spd b{font-size:22px;font-weight:700;color:#4f46e5;
-       font-variant-numeric:tabular-nums;letter-spacing:-.5px}
-.spd b em{font-style:normal;font-size:12px;font-weight:600;color:#818cf8;margin-left:2px}
-.spd s{text-decoration:none;font-size:11.5px;color:#94a3b8;margin-left:auto;
+.task.bad .bar i::after{display:none}
+.spd{display:flex;align-items:baseline;gap:6px;margin-top:10px}
+.spd b{font-size:23px;font-weight:700;color:var(--acc);
+       font-variant-numeric:tabular-nums;letter-spacing:-.6px}
+.spd b em{font-style:normal;font-size:12px;font-weight:600;color:var(--acc-mid);margin-left:3px}
+.spd s{text-decoration:none;font-size:11.5px;color:var(--mut);margin-left:auto;
        white-space:nowrap;font-variant-numeric:tabular-nums}
-.task.ok .spd b{color:#059669}
-.task.bad .spd b{color:#dc2626}
-.stat{font-size:12px;color:#64748b;margin-top:5px;
+.task.ok .spd b{color:var(--ok)}
+.task.bad .spd b{color:var(--bad)}
+.stat{font-size:12px;color:var(--sub);margin-top:6px;
       font-variant-numeric:tabular-nums;word-break:break-all}
-.foot{display:flex;justify-content:space-between;align-items:center;margin-top:9px;gap:10px}
-.foot span{font-size:11.5px;color:#94a3b8}
-.tcancel{border:none;background:#f1f5f9;color:#64748b;border-radius:8px;
-         padding:5px 11px;font-size:12px;cursor:pointer}
-.files{margin-top:22px}
-.fh{display:flex;justify-content:space-between;align-items:center;margin:0 4px 8px}
-.fh h2{font-size:16px}
-.fh .tools{display:flex;gap:4px;align-items:center}
-.fh button{border:none;background:none;color:#6366f1;font-size:13px;cursor:pointer;padding:8px 6px}
-.disk{font-size:12px;color:#94a3b8}
-.file{display:flex;align-items:center;gap:10px;background:#fff;border-radius:16px;
-      padding:12px 14px;margin-top:8px;box-shadow:0 2px 12px rgba(15,23,42,.06)}
+.foot{display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:10px}
+.foot span{font-size:11.5px;color:var(--mut)}
+.tcancel{border:1px solid var(--line);background:transparent;color:var(--sub);border-radius:9px;
+         padding:5px 12px;font-size:12px;cursor:pointer;transition:all .15s}
+.tcancel:hover{background:var(--bad-soft);color:var(--bad);border-color:rgba(239,68,68,.4)}
+.files{margin-top:26px}
+.fh{display:flex;justify-content:space-between;align-items:center;margin:0 2px 10px}
+.fh h2{font-size:15.5px;font-weight:650}
+.fh .tools{display:flex;gap:6px;align-items:center}
+.fh button{border:none;background:var(--acc-soft);color:var(--acc);font-size:12.5px;
+           font-weight:600;cursor:pointer;padding:6px 12px;border-radius:9px;transition:filter .15s}
+.fh button:hover{filter:brightness(.95)}
+.disk{font-size:11.5px;color:var(--mut)}
+.file{display:flex;align-items:center;gap:11px;background:var(--panel);border:1px solid var(--line);
+      border-radius:15px;padding:11px 13px;margin-top:8px;box-shadow:var(--sh1);
+      transition:transform .15s,border-color .15s}
+.file:hover{border-color:var(--acc-mid);transform:translateY(-1px)}
+.fic{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;
+     justify-content:center;flex:0 0 auto;font-size:9px;font-weight:700;letter-spacing:.3px}
+.fic.img{background:#e0f2fe;color:#0284c7}
+.fic.vid{background:#fae8ff;color:#a21caf}
+.fic.aud{background:#fef3c7;color:#b45309}
+.fic.zip{background:#ede9fe;color:#6d28d9}
+.fic.doc{background:#e0e7ff;color:#4338ca}
+.fic.oth{background:#f1f5f9;color:#64748b}
+@media (prefers-color-scheme:dark){
+  .fic.img{background:#0c2b45;color:#7dd3fc}
+  .fic.vid{background:#2b1140;color:#e9a6f5}
+  .fic.aud{background:#3a2a08;color:#fcd34d}
+  .fic.zip{background:#1e1a45;color:#c4b5fd}
+  .fic.doc{background:#141c4a;color:#a5b4fc}
+  .fic.oth{background:#1b2138;color:#8b96b5}
+}
 .fnm{flex:1;min-width:0}
-.fnm b{font-size:14px;font-weight:600;word-break:break-all;line-height:1.4}
-.fsz{color:#94a3b8;font-size:12px;margin-top:4px}
-.btn{border:none;border-radius:10px;padding:9px 13px;font-size:13px;cursor:pointer;
-     text-decoration:none;white-space:nowrap;display:inline-block}
-.dl{background:#eef2ff;color:#4f46e5;font-weight:600}
-.del{background:#fee2e2;color:#dc2626}
-.empty{text-align:center;color:#94a3b8;font-size:13px;padding:22px 0}
+.fnm b{font-size:13.5px;font-weight:600;word-break:break-all;line-height:1.45;display:block}
+.fsz{color:var(--mut);font-size:11.5px;margin-top:3px}
+.btn{border:none;border-radius:10px;padding:8px 12px;font-size:12.5px;cursor:pointer;
+     text-decoration:none;white-space:nowrap;display:inline-block;font-weight:600;transition:filter .15s}
+.btn:hover{filter:brightness(.94)}
+.dl{background:var(--acc-soft);color:var(--acc)}
+.del{background:var(--bad-soft);color:var(--bad)}
+.empty{text-align:center;color:var(--mut);font-size:13px;padding:24px 0}
 .toast{position:fixed;left:50%;bottom:36px;transform:translateX(-50%) translateY(20px);
-       background:rgba(15,23,42,.93);color:#fff;padding:12px 22px;border-radius:14px;
+       background:rgba(15,23,42,.94);color:#fff;padding:12px 22px;border-radius:14px;
        font-size:14px;opacity:0;pointer-events:none;transition:all .25s;
-       max-width:86vw;text-align:center;line-height:1.5;z-index:99}
+       max-width:86vw;text-align:center;line-height:1.5;z-index:99;
+       box-shadow:0 12px 34px rgba(2,6,23,.35)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 input[type=file]{display:none}
-.tip{font-size:12px;color:#94a3b8;text-align:center;margin-top:14px;line-height:1.7}
+.tip{font-size:12px;color:var(--mut);text-align:center;margin-top:16px;line-height:1.75}
 </style>
 </head>
 <body>
+<div class="bg"></div>
 <div class="wrap">
   <h1>内网文件互传</h1>
 
@@ -386,13 +465,22 @@ function trace(msg){
 }
 
 /* ---------------- 任务卡片 ---------------- */
+function setPill(task, txt, cls){
+  if (!task.pill) return;
+  task.pill.textContent = txt;
+  task.pill.className = 'pill ' + (cls || '');
+}
+
 function createTask(file){
   var el = document.createElement('div');
   el.className = 'task';
   el.innerHTML =
     '<div class="trow">' +
-      '<div class="tname">' + esc(file.name) + '</div>' +
-      '<div class="tsize">' + fmtSize(file.size) + '</div>' +
+      '<div class="tmeta">' +
+        '<div class="tname">' + esc(file.name) + '</div>' +
+        '<div class="tsize">' + fmtSize(file.size) + '</div>' +
+      '</div>' +
+      '<span class="pill up">上传中</span>' +
     '</div>' +
     '<div class="bar"><i></i></div>' +
     '<div class="spd"><b>0<em>MB/s</em></b><s>峰值 0 MB/s</s></div>' +
@@ -408,6 +496,7 @@ function createTask(file){
     peak: el.querySelector('.spd s'),
     stat: el.querySelector('.stat'),
     extra: el.querySelector('.extra'),
+    pill: el.querySelector('.pill'),
     cancelled: false,
     finished: false,
     aborts: [],
@@ -430,6 +519,7 @@ function createTask(file){
     obj.cancelled = true;
     obj.finished = true;
     obj.stat.textContent = '正在取消…';
+    setPill(obj, '取消中', 'cxp');
     obj.aborts.forEach(function(a){ try{ a(); }catch(e){} });
   });
 
@@ -479,6 +569,7 @@ function taskDone(task, savedName){
   task.finished = true;
   task.el.classList.add('ok');
   task.bar.style.width = '100%';
+  setPill(task, '已完成', 'okp');
   task.spd.innerHTML = fmtSpeed(task.peakSpeed) + '<em>' + speedUnit(task.peakSpeed) + '</em>';
   task.peak.textContent = '峰值 ' + fmtSpeed(task.peakSpeed) + ' ' + speedUnit(task.peakSpeed);
   task.stat.textContent = '已完成 · ' + savedName;
@@ -492,6 +583,7 @@ function taskDone(task, savedName){
 function taskFail(task, msg){
   task.finished = true;
   task.el.classList.add('bad');
+  setPill(task, '已失败', 'badp');
   task.stat.textContent = '失败：' + msg;
   var btn = task.el.querySelector('.tcancel');
   if (btn) btn.remove();
@@ -740,6 +832,7 @@ async function runUpload(file, task){
 
       if (task.cancelled){
         await jpost('/api/cancel?uploadId=' + encodeURIComponent(uid)).catch(function(){});
+        setPill(task, '已取消', 'cxp');
         task.stat.textContent = '已取消';
         return;
       }
@@ -760,7 +853,7 @@ async function runUpload(file, task){
     } catch (err){
       attempt++;
       trace('runUpload error attempt=' + attempt + ' msg=' + err.message);
-      if (task.cancelled){ task.stat.textContent = '已取消'; return; }
+      if (task.cancelled){ setPill(task, '已取消', 'cxp'); task.stat.textContent = '已取消'; return; }
 
       /* 只要有实质进展就重置重试计数：长文件允许反复自愈，不轻易判失败 */
       if (task.doneChunks > lastDone){ lastDone = task.doneChunks; attempt = 0; }
@@ -1070,7 +1163,7 @@ async function wsRunUpload(file, task){
   while (true){
     try {
       var r = await wsSession(file, task, n);
-      if (task.cancelled){ task.stat.textContent = '已取消'; return; }
+      if (task.cancelled){ setPill(task, '已取消', 'cxp'); task.stat.textContent = '已取消'; return; }
       if (task.doneChunks > lastDone) lastDone = task.doneChunks;
       var nm = r.savedName || r.name || file.name;
       taskDone(task, nm);
@@ -1128,6 +1221,20 @@ function startUpload(file){
   });
 }
 
+/* 文件列表左侧的类型角标：按扩展名归类并配色 */
+function fileBadge(name){
+  var n = (name || '').toLowerCase();
+  var m = n.match(/\.([a-z0-9]{1,5})$/);
+  var ext = m ? m[1].toUpperCase() : 'FILE';
+  var cls = 'oth';
+  if (/\.(png|jpg|jpeg|gif|webp|heic|bmp|svg|tiff)$/.test(n)) cls = 'img';
+  else if (/\.(mp4|mov|mkv|avi|webm|m4v|flv|ts)$/.test(n)) cls = 'vid';
+  else if (/\.(mp3|wav|flac|m4a|aac|ogg|opus)$/.test(n)) cls = 'aud';
+  else if (/\.(zip|rar|7z|tar|gz|bz2|xz|iso)$/.test(n)) cls = 'zip';
+  else if (/\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|md|csv|epub)$/.test(n)) cls = 'doc';
+  return '<div class="fic ' + cls + '"><b>' + esc(ext) + '</b></div>';
+}
+
 /* ---------------- 文件列表 ---------------- */
 function refresh(){
   jget('/api/files').then(function(data){
@@ -1138,6 +1245,7 @@ function refresh(){
     }
     box.innerHTML = data.files.map(function(f){
       return '<div class="file">' +
+        fileBadge(f.name) +
         '<div class="fnm"><b>' + esc(f.name) + '</b>' +
         '<div class="fsz">' + fmtSize(f.size) + ' · ' + esc(f.time) + '</div></div>' +
         '<a class="btn dl" href="/download?name=' + encodeURIComponent(f.name) +
