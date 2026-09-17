@@ -91,7 +91,7 @@ except Exception:
     pass
 
 # ==================== 配置区（按需修改） ====================
-VERSION = "3.4"                      # 程序版本(页面会校验, 不一致时自动刷新)
+VERSION = "3.4.1"                    # 程序版本(页面会校验, 不一致时自动刷新)
 PORT = 8899                          # 服务端口
 AUTO_OPEN_BROWSER = True             # 启动时在本机自动打开浏览器
 SOCKET_TIMEOUT = 120                 # 单次网络读写超时(秒)
@@ -136,7 +136,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei
      color:#1e293b;padding:max(18px,env(safe-area-inset-top)) 16px max(40px,env(safe-area-inset-bottom))}
 .wrap{max-width:600px;margin:0 auto}
 h1{font-size:21px;text-align:center;margin:6px 0 4px;font-weight:700}
-.sub{text-align:center;color:#64748b;font-size:13px;margin-bottom:16px;line-height:1.6}
+
 .card{background:rgba(255,255,255,.9);border-radius:24px;padding:20px 16px;
       box-shadow:0 18px 50px rgba(79,70,229,.12)}
 .zone{border:2px dashed #c7d2fe;border-radius:18px;background:#f8faff;padding:30px 16px;
@@ -206,7 +206,6 @@ input[type=file]{display:none}
 <body>
 <div class="wrap">
   <h1>内网文件互传</h1>
-  <p class="sub">iPad 与电脑 双向传输 · 单文件 20G 以上 · 断网自动续传</p>
 
   <div class="card">
     <div class="zone" id="zone">
@@ -227,7 +226,6 @@ input[type=file]{display:none}
         <option value="3">3</option>
         <option value="4">4</option>
       </select>
-      <span id="parhint">并行 WebSocket 条数：绕开单条 TCP 流的窗口限制，越多越快，但别顶满 Safari 的 6 条上限</span>
     </div>
     <div class="par">
       <label>停滞判定</label>
@@ -813,9 +811,6 @@ function connCount(){
   var v = el ? parseInt(el.value, 10) : 0;
   return Math.max(1, Math.min(4, v || 2));
 }
-function taskHintConn(){
-  return '并行 ' + connCount() + ' 条长连接：绕开单条 TCP 流的窗口限制';
-}
 
 function wsURL(){
   var p = (location.protocol === 'https:') ? 'wss:' : 'ws:';
@@ -1206,15 +1201,11 @@ requestWakeLock();
 
   $('parallel').addEventListener('change', function(){
     try { localStorage.setItem('iu_parallel', this.value); } catch(e){}
-    $('parhint').innerHTML = taskHintConn() +
-      (IS_IOS ? ' · iPad 建议 2 条，卡了就调回 1 条' : '');
   });
   $('wdog').addEventListener('change', function(){
     try { localStorage.setItem('iu_wdog', this.value); } catch(e){}
   });
 
-  $('parhint').innerHTML = (taskHintConn()) +
-    (IS_IOS ? ' · iPad 建议 2 条，卡了就调回 1 条' : '');
 })();
 
 /* 页面被切走/隐藏时把埋点发出去，便于排查卡死位置 */
