@@ -1,0 +1,9 @@
+# 换行符归一化：bat 必须是 CRLF，否则 Windows 下部分语句会解析异常
+* text=auto
+
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+*.py   text eol=lf
+*.md   text eol=lf
+*.gitignore text eol=lf
+*.gitattributes text eol=lf
